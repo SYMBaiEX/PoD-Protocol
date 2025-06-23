@@ -60,7 +60,7 @@
   "homepage": "https://github.com/Dexploarer/PoD-Protocol#readme",
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://npm.pkg.github.com"
   },
   "license": "MIT",
   "dependencies": {
