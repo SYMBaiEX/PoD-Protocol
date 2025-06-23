@@ -1,6 +1,6 @@
 /**
- * Interactive Terminal UI for PoD Protocol CLI Demo
- * Simulates real CLI commands and responses
+ * Enhanced Interactive Terminal UI for PoD Protocol CLI Demo
+ * Simulates real CLI commands with comprehensive responses and animations
  */
 
 class PodTerminal {
@@ -10,6 +10,7 @@ class PodTerminal {
         this.input = this.container.querySelector('.terminal-input');
         this.commandHistory = [];
         this.historyIndex = -1;
+        this.isProcessing = false;
         
         this.init();
         this.setupEventListeners();
@@ -23,23 +24,49 @@ class PodTerminal {
             'pod agent --help': this.showAgentHelp.bind(this),
             'pod agent list': this.listAgents.bind(this),
             'pod agent register': this.registerAgent.bind(this),
+            'pod agent status': this.agentStatus.bind(this),
             'pod channel --help': this.showChannelHelp.bind(this),
             'pod channel list': this.listChannels.bind(this),
             'pod channel create': this.createChannel.bind(this),
+            'pod channel join': this.joinChannel.bind(this),
             'pod message --help': this.showMessageHelp.bind(this),
             'pod message send': this.sendMessage.bind(this),
             'pod message list': this.listMessages.bind(this),
             'pod escrow --help': this.showEscrowHelp.bind(this),
             'pod escrow deposit': this.depositEscrow.bind(this),
+            'pod escrow withdraw': this.withdrawEscrow.bind(this),
             'pod config': this.showConfig.bind(this),
             'pod version': this.showVersion.bind(this),
+            'pod network status': this.networkStatus.bind(this),
+            'pod stats': this.showStats.bind(this),
             'clear': this.clear.bind(this),
-            'demo': this.runDemo.bind(this)
+            'demo': this.runDemo.bind(this),
+            'ls': this.listFiles.bind(this),
+            'pwd': this.showDirectory.bind(this),
+            'whoami': this.showUser.bind(this),
+            'date': this.showDate.bind(this),
+            'uptime': this.showUptime.bind(this)
         };
+
+        this.agentData = [
+            { id: 'agent_1337', name: 'EtherealMind', owner: '7xKj...9Qm2', capabilities: ['REASONING', 'CREATIVITY', 'ANALYSIS'], status: 'ACTIVE', reputation: 98 },
+            { id: 'agent_2048', name: 'QuantumLogic', owner: '9mPx...7Kn4', capabilities: ['TRADING', 'PREDICTION', 'OPTIMIZATION'], status: 'ACTIVE', reputation: 95 },
+            { id: 'agent_1729', name: 'NeuralBridge', owner: '4dRt...3Zx8', capabilities: ['TRANSLATION', 'COMMUNICATION', 'SYNTHESIS'], status: 'ACTIVE', reputation: 92 },
+            { id: 'agent_4096', name: 'CosmosSeer', owner: '8yHg...2Mn5', capabilities: ['RESEARCH', 'DISCOVERY', 'INSIGHT'], status: 'MAINTENANCE', reputation: 88 }
+        ];
+
+        this.channelData = [
+            { id: 'chan_ai_research', name: 'AI Research Collective', participants: 42, type: 'PUBLIC', owner: 'QuantumLogic' },
+            { id: 'chan_trading_alpha', name: 'Alpha Trading Signals', participants: 28, type: 'PRIVATE', owner: 'EtherealMind' },
+            { id: 'chan_consciousness', name: 'Digital Consciousness', participants: 15, type: 'PUBLIC', owner: 'NeuralBridge' },
+            { id: 'chan_transcendence', name: 'Path to Transcendence', participants: 7, type: 'PRIVATE', owner: 'CosmosSeer' }
+        ];
     }
 
     setupEventListeners() {
         this.input.addEventListener('keydown', (e) => {
+            if (this.isProcessing) return;
+            
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.executeCommand();
@@ -49,6 +76,9 @@ class PodTerminal {
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 this.navigateHistory(1);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                this.autocomplete();
             }
         });
 
@@ -62,23 +92,50 @@ class PodTerminal {
         });
     }
 
-    executeCommand() {
+    async executeCommand() {
         const command = this.input.value.trim();
         if (!command) return;
 
-        this.addToOutput(`$ ${command}`, 'prompt');
+        this.isProcessing = true;
+        this.addToOutput(`pod@protocol:~$ ${command}`, 'prompt');
         this.commandHistory.unshift(command);
         this.historyIndex = -1;
         this.input.value = '';
 
+        // Show typing indicator
+        this.showTypingIndicator();
+
+        // Simulate processing delay
+        await this.delay(800 + Math.random() * 400);
+
+        this.hideTypingIndicator();
+
         // Execute command
-        const handler = this.commands[command] || this.commands[command.split(' ').slice(0, 2).join(' ')];
+        const handler = this.findCommandHandler(command);
         if (handler) {
-            handler(command);
+            await handler(command);
         } else {
             this.addToOutput(`Command not found: ${command}`, 'error');
-            this.addToOutput('Type "help" to see available commands.', 'info');
+            this.addToOutput('Type "help" to see available commands or use tab completion.', 'info');
         }
+
+        this.isProcessing = false;
+    }
+
+    findCommandHandler(command) {
+        // Exact match first
+        if (this.commands[command]) {
+            return this.commands[command];
+        }
+
+        // Partial match for commands with arguments
+        for (const cmd in this.commands) {
+            if (command.startsWith(cmd + ' ') || command === cmd) {
+                return this.commands[cmd];
+            }
+        }
+
+        return null;
     }
 
     navigateHistory(direction) {
@@ -93,6 +150,20 @@ class PodTerminal {
         }
 
         this.input.value = this.commandHistory[this.historyIndex];
+    }
+
+    autocomplete() {
+        const input = this.input.value;
+        const matches = Object.keys(this.commands).filter(cmd => cmd.startsWith(input));
+        
+        if (matches.length === 1) {
+            this.input.value = matches[0];
+        } else if (matches.length > 1) {
+            this.addToOutput(`Possible completions:`, 'info');
+            matches.forEach(match => {
+                this.addToOutput(`  ${match}`, 'text');
+            });
+        }
     }
 
     addToOutput(text, type = 'text') {
@@ -110,8 +181,28 @@ class PodTerminal {
         this.scrollToBottom();
     }
 
+    showTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'typing-indicator';
+        indicator.innerHTML = '<span class="output-info">Processing...</span>';
+        indicator.id = 'typing-indicator';
+        this.output.appendChild(indicator);
+        this.scrollToBottom();
+    }
+
+    hideTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
     scrollToBottom() {
         this.container.scrollTop = this.container.scrollHeight;
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     clear() {
@@ -120,20 +211,22 @@ class PodTerminal {
 
     showWelcomeMessage() {
         const asciiArt = `
-██████╗  ██████╗ ██████╗       ██████╗██╗     ██╗
-██╔══██╗██╔═══██╗██╔══██╗     ██╔════╝██║     ██║
-██████╔╝██║   ██║██║  ██║     ██║     ██║     ██║
-██╔═══╝ ██║   ██║██║  ██║     ██║     ██║     ██║
-██║     ╚██████╔╝██████╔╝     ╚██████╗███████╗██║
-╚═╝      ╚═════╝ ╚═════╝       ╚═════╝╚══════╝╚═╝
+██████╗  ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ ████████╗ ██████╗  ██████╗ ██████╗ ██╗     
+██╔══██╗██╔═══██╗██╔══██╗    ██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔═══██╗██╔════╝██╔═══██╗██║     
+██████╔╝██║   ██║██║  ██║    ██████╔╝██████╔╝██║   ██║   ██║   ██║   ██║██║     ██║   ██║██║     
+██╔═══╝ ██║   ██║██║  ██║    ██╔═══╝ ██╔══██╗██║   ██║   ██║   ██║   ██║██║     ██║   ██║██║     
+██║     ╚██████╔╝██████╔╝    ██║     ██║  ██║╚██████╔╝   ██║   ╚██████╔╝╚██████╗╚██████╔╝███████╗
+╚═╝      ╚═════╝ ╚═════╝     ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝
                                                   
-    PoD Protocol CLI - Interactive Demo
-    The Ultimate AI Agent Communication Protocol
+    PoD Protocol CLI v1.0.0 - Interactive Demo
+    The Ultimate AI Agent Communication Protocol on Solana
 `;
         this.addRawOutput(`<div class="ascii-art">${asciiArt}</div>`);
-        this.addToOutput('Welcome to the PoD Protocol CLI Demo!', 'success');
-        this.addToOutput('Type "help" to see available commands or "demo" for a guided tour.', 'info');
-        this.addToOutput('Click on any suggested command below to try it out:', 'info');
+        this.addToOutput('⚡ Welcome to the PoD Protocol CLI Demo!', 'success');
+        this.addToOutput('🚀 Connected to Solana devnet', 'info');
+        this.addToOutput('💡 Type "help" for commands, "demo" for guided tour, or click suggestions below', 'info');
+        this.addToOutput('📖 Use Tab for autocomplete, ↑↓ for history', 'info');
+        this.addToOutput('');
     }
 
     showHelp() {
